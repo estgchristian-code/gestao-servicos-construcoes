@@ -1,6 +1,11 @@
 <?php
 
+use App\Enums\BudgetStatus;
+use App\Enums\ServiceOrderStatus;
 use App\Models\Budget;
+use App\Models\ServiceOrder;
+use App\Models\ServiceOrderItem;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 new class extends Component {
@@ -22,6 +27,80 @@ new class extends Component {
         return redirect()
             ->route('budgets.index')
             ->with('status', 'Orçamento excluído com sucesso.');
+    }
+
+    public function convert()
+    {
+        $this->authorize('convert', $this->budget);
+
+        if ($this->budget->status !== BudgetStatus::Approved) {
+            abort(403, 'Somente orçamentos aprovados podem ser convertidos em ordem de serviço.');
+        }
+
+        if ($this->budget->service_order_id !== null) {
+            abort(403, 'Este orçamento já foi convertido em uma ordem de serviço.');
+        }
+
+        $order = DB::transaction(function () {
+            $budget = Budget::query()
+                ->whereKey($this->budget->id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($budget->status !== BudgetStatus::Approved || $budget->service_order_id !== null) {
+                abort(403, 'Este orçamento não pode mais ser convertido em ordem de serviço.');
+            }
+
+            $order = new ServiceOrder([
+                'client_id' => $budget->client_id,
+                'budget_id' => $budget->id,
+                'number' => $this->generateOrderNumber(),
+                'title' => (string) $budget->title,
+                'status' => ServiceOrderStatus::Pending,
+                'scheduled_at' => null,
+                'notes' => $budget->notes,
+            ]);
+            $order->company_id = $budget->company_id;
+            $order->save();
+
+            $total = 0.0;
+
+            foreach ($budget->items as $item) {
+                $subtotal = round((float) $item->subtotal, 2);
+                $total += $subtotal;
+
+                $orderItem = new ServiceOrderItem([
+                    'service_order_id' => $order->id,
+                    'service_id' => $item->service_id,
+                    'description' => $item->description,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'subtotal' => $subtotal,
+                ]);
+                $orderItem->company_id = $budget->company_id;
+                $orderItem->save();
+            }
+
+            $order->update(['total' => round($total, 2)]);
+
+            $budget->service_order_id = $order->id;
+            $budget->save();
+
+            return $order;
+        });
+
+        $this->budget = $this->budget->fresh();
+
+        session()->flash('status', 'Orçamento convertido em OS #' . $order->number . ' com sucesso.');
+    }
+
+    private function generateOrderNumber(): string
+    {
+        $max = ServiceOrder::query()->forCompany($this->budget->company_id)->max('number');
+
+        $next = $max !== null ? ((int) $max) + 1 : 1;
+
+        return str_pad((string) $next, 6, '0', STR_PAD_LEFT);
     }
 };
 ?>
@@ -47,6 +126,16 @@ new class extends Component {
 
         @can('update', $this->budget)
             <div class="flex flex-none flex-wrap items-center gap-2">
+                @if ($this->budget->status === BudgetStatus::Approved && $this->budget->service_order_id === null)
+                    <button type="button" wire:click="convert" wire:confirm="Converter este orçamento em uma ordem de serviço? Esta ação não pode ser desfeita."
+                        class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                        </svg>
+                        Converter em OS
+                    </button>
+                @endif
+
                 <a href="{{ route('budgets.edit', $this->budget) }}"
                     class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor" aria-hidden="true">
@@ -70,6 +159,24 @@ new class extends Component {
 
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="lg:col-span-2 space-y-6">
+            @if ($this->budget->serviceOrder)
+                <div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+                    <div class="border-b border-slate-100 px-6 py-4">
+                        <h2 class="text-sm font-semibold text-slate-900">Ordem de serviço gerada</h2>
+                        <p class="mt-0.5 text-xs text-slate-500">Este orçamento foi convertido na ordem de serviço abaixo.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
+                        <a href="{{ route('service-orders.show', $this->budget->serviceOrder) }}"
+                            class="text-sm font-semibold text-indigo-600 transition hover:text-indigo-700">
+                            OS #{{ $this->budget->serviceOrder->number }} — {{ $this->budget->serviceOrder->title }}
+                        </a>
+                        <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 {{ $this->budget->serviceOrder->status->badgeClasses() }}">
+                            {{ $this->budget->serviceOrder->status->label() }}
+                        </span>
+                    </div>
+                </div>
+            @endif
+
             <div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
                 <div class="border-b border-slate-100 px-6 py-4">
                     <h2 class="text-sm font-semibold text-slate-900">Informações do orçamento</h2>

@@ -47,6 +47,15 @@ class BudgetPolicy
         return $this->canManageCompany($user, $budget);
     }
 
+    /**
+     * Only an Admin/Comercial of the owning company may convert an approved
+     * budget into a service order.
+     */
+    public function convert(User $user, Budget $budget): bool
+    {
+        return $this->canManageCompany($user, $budget);
+    }
+
     protected function canManageCompany(User $user, Budget $budget): bool
     {
         return ($user->isAdmin() || $user->isComercial())

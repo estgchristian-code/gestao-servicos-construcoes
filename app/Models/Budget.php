@@ -62,6 +62,16 @@ class Budget extends Model
     }
 
     /**
+     * The service order generated from this budget (one per budget).
+     *
+     * @return BelongsTo<ServiceOrder, $this>
+     */
+    public function serviceOrder(): BelongsTo
+    {
+        return $this->belongsTo(ServiceOrder::class);
+    }
+
+    /**
      * Scope the query to a single company/tenant.
      *
      * @param  Builder<Budget>  $query
