@@ -112,6 +112,24 @@ new class extends Component {
                     </div>
 
                     <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Endereço de execução</p>
+                        <p class="mt-1 text-sm text-slate-700">
+                            @if ($this->order->clientAddress)
+                                @if ($this->order->clientAddress->label)
+                                    <span class="font-medium text-slate-800">{{ $this->order->clientAddress->label }}</span><br>
+                                @endif
+                                {{ $this->order->clientAddress->street }}{{ $this->order->clientAddress->number ? ', ' . $this->order->clientAddress->number : '' }}
+                                @if ($this->order->clientAddress->complement)
+                                    <br>{{ $this->order->clientAddress->complement }}
+                                @endif
+                                <br>{{ $this->order->clientAddress->district ? $this->order->clientAddress->district . ' — ' : '' }}{{ $this->order->clientAddress->city }}/{{ $this->order->clientAddress->state }}
+                            @else
+                                Não informado
+                            @endif
+                        </p>
+                    </div>
+
+                    <div>
                         <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Valor total</p>
                         <p class="mt-1 text-sm font-medium text-slate-900">
                             R$ {{ number_format((float) $this->order->total, 2, ',', '.') }}

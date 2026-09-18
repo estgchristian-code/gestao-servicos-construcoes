@@ -18,6 +18,25 @@
                 @enderror
             </div>
 
+            <div class="sm:col-span-2">
+                <label for="client_address_id" class="mb-1 block text-sm font-medium text-slate-700">Endereço de execução</label>
+                <select id="client_address_id" wire:model="client_address_id"
+                    class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30">
+                    <option value="">Sem endereço selecionado</option>
+                    @foreach ($this->addresses as $address)
+                        <option value="{{ $address->id }}">
+                            @if ($address->label)
+                                {{ $address->label }} —
+                            @endif{{ $address->street }}, {{ $address->number }} — {{ $address->city }}/{{ $address->state }}
+                        </option>
+                    @endforeach
+                </select>
+                <p class="mt-1 text-xs text-slate-400">Opcional. Somente endereços do cliente selecionado.</p>
+                @error('client_address_id')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+
             <div>
                 <label for="number" class="mb-1 block text-sm font-medium text-slate-700">Número</label>
                 <input id="number" type="text" value="{{ $number }}" disabled readonly

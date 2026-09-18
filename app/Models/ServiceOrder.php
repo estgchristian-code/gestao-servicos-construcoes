@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['budget_id', 'client_id', 'technician_id', 'number', 'title', 'status', 'scheduled_at', 'notes', 'total'])]
+#[Fillable(['budget_id', 'client_id', 'client_address_id', 'technician_id', 'number', 'title', 'status', 'scheduled_at', 'notes', 'total'])]
 class ServiceOrder extends Model
 {
     /** @use HasFactory<ServiceOrderFactory> */
@@ -59,6 +59,16 @@ class ServiceOrder extends Model
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    /**
+     * The client address where this service order will be executed (optional).
+     *
+     * @return BelongsTo<ClientAddress, $this>
+     */
+    public function clientAddress(): BelongsTo
+    {
+        return $this->belongsTo(ClientAddress::class);
     }
 
     /**

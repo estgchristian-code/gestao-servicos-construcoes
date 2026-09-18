@@ -4,6 +4,7 @@ use App\Enums\ServiceOrderStatus;
 use App\Enums\UserRole;
 use App\Models\Budget;
 use App\Models\Client;
+use App\Models\ClientAddress;
 use App\Models\ServiceOrder;
 use App\Models\User;
 use Illuminate\Validation\Rule;
@@ -12,6 +13,8 @@ use Livewire\Component;
 
 new class extends Component {
     public string $client_id = '';
+
+    public string $client_address_id = '';
 
     public string $budget_id = '';
 
@@ -43,6 +46,20 @@ new class extends Component {
     }
 
     #[Computed]
+    public function addresses()
+    {
+        if ($this->client_id === '') {
+            return collect();
+        }
+
+        return ClientAddress::query()
+            ->where('client_addresses.client_id', $this->client_id)
+            ->orderByDesc('client_addresses.main')
+            ->orderBy('client_addresses.created_at')
+            ->get();
+    }
+
+    #[Computed]
     public function budgets()
     {
         return Budget::query()
@@ -68,6 +85,7 @@ new class extends Component {
     public function updatedClientId(): void
     {
         $this->budget_id = '';
+        $this->client_address_id = '';
     }
 
     public function save()
@@ -86,6 +104,22 @@ new class extends Component {
                 Rule::exists('budgets', 'id')
                     ->where('company_id', auth()->user()->company_id)
                     ->when($this->client_id !== '', fn ($rule) => $rule->where('budgets.client_id', $this->client_id)),
+            ],
+            'client_address_id' => [
+                'nullable',
+                function (string $attribute, $value, $fail) {
+                    if ($value === '' || $value === null) {
+                        return;
+                    }
+                    $valid = ClientAddress::query()
+                        ->where('client_addresses.id', $value)
+                        ->where('client_addresses.client_id', $this->client_id)
+                        ->whereHas('client', fn ($q) => $q->where('clients.company_id', auth()->user()->company_id))
+                        ->exists();
+                    if (! $valid) {
+                        $fail('O endereço selecionado é inválido.');
+                    }
+                },
             ],
             'title' => ['required', 'string', 'max:255'],
             'status' => [Rule::enum(ServiceOrderStatus::class)],
@@ -117,6 +151,7 @@ new class extends Component {
 
         $order = new ServiceOrder([
             'client_id' => $this->client_id,
+            'client_address_id' => $this->client_address_id !== '' ? $this->client_address_id : null,
             'budget_id' => $this->budget_id !== '' ? $this->budget_id : null,
             'technician_id' => $this->technician_id !== '' ? $this->technician_id : null,
             'number' => $this->generateNumber(),
