@@ -129,6 +129,8 @@ new class extends Component {
                     </div>
                 </div>
             </div>
+
+            <livewire:manage-service-order-items :order="$this->order" :key="$this->order->id" />
         </div>
     </div>
 </div>

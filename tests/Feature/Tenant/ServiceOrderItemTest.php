@@ -257,7 +257,7 @@ class ServiceOrderItemTest extends TestCase
         $this->assertDatabaseHas('service_order_items', ['id' => $item->id]);
     }
 
-    public function test_tecnico_show_page_does_not_render_items_at_stage_one(): void
+    public function test_tecnico_show_page_renders_items_without_management_actions(): void
     {
         $company = Company::factory()->create();
         $user = User::factory()->tecnico()->company($company)->create();
@@ -274,8 +274,8 @@ class ServiceOrderItemTest extends TestCase
         $this->actingAs($user)
             ->get(route('service-orders.show', $order))
             ->assertOk()
+            ->assertSee('Item Visível')
             ->assertSee('R$ 100,00')
-            ->assertDontSee('Item Visível')
             ->assertDontSee('Adicionar item')
             ->assertDontSee('Excluir');
     }
