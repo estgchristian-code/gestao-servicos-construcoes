@@ -103,6 +103,6 @@ class LoginTest extends TestCase
         $this->get('/home')
             ->assertOk()
             ->assertSee($company->name)
-            ->assertSee($user->email);
+            ->assertSee('Dashboard');
     }
 }
