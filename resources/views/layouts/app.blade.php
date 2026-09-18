@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>{{ $title ?? (auth()->user()?->company?->name ?? config('app.name')) }}</title>
+    <title>Gestão de Serviços</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -35,9 +35,9 @@
     $navItems = [
         ['label' => 'Início', 'route' => 'home', 'icon' => 'home'],
         ['label' => 'Clientes', 'route' => 'clients.index', 'icon' => 'users'],
-        ['label' => 'Serviços', 'route' => null, 'icon' => 'wrench'],
-        ['label' => 'Orçamentos', 'route' => null, 'icon' => 'bill'],
-        ['label' => 'Ordens de Serviço', 'route' => null, 'icon' => 'clipboard'],
+        ['label' => 'Serviços', 'route' => 'services.index', 'icon' => 'wrench'],
+        ['label' => 'Orçamentos', 'route' => 'budgets.index', 'icon' => 'bill'],
+        ['label' => 'Ordens de Serviço', 'route' => 'service-orders.index', 'icon' => 'clipboard'],
         ['label' => 'Agenda', 'route' => null, 'icon' => 'calendar'],
     ];
 @endphp

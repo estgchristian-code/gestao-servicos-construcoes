@@ -1,0 +1,91 @@
+<?php
+
+namespace App\Models;
+
+use App\Enums\ServiceOrderStatus;
+use Database\Factories\ServiceOrderFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+#[Fillable(['budget_id', 'client_id', 'number', 'title', 'status', 'scheduled_at', 'notes'])]
+class ServiceOrder extends Model
+{
+    /** @use HasFactory<ServiceOrderFactory> */
+    use HasFactory;
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'status' => ServiceOrderStatus::class,
+            'scheduled_at' => 'date',
+        ];
+    }
+
+    /**
+     * The company (tenant) this service order belongs to.
+     *
+     * @return BelongsTo<Company, $this>
+     */
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * The budget this service order was originated from (optional).
+     *
+     * @return BelongsTo<Budget, $this>
+     */
+    public function budget(): BelongsTo
+    {
+        return $this->belongsTo(Budget::class);
+    }
+
+    /**
+     * The client this service order is addressed to.
+     *
+     * @return BelongsTo<Client, $this>
+     */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
+    }
+
+    /**
+     * Scope the query to a single company/tenant.
+     *
+     * @param  Builder<ServiceOrder>  $query
+     * @param  int|User  $company  Company id or an authenticated-style user.
+     */
+    public function scopeForCompany(Builder $query, int|User $company): Builder
+    {
+        $companyId = $company instanceof User ? $company->company_id : $company;
+
+        return $query->where('service_orders.company_id', $companyId);
+    }
+
+    /**
+     * Route model binding always resolves within the authenticated user's own
+     * company. Service orders from other tenants are treated as non-existent (404).
+     */
+    public function resolveRouteBindingQuery($query, $value, $field = null)
+    {
+        $query = parent::resolveRouteBindingQuery($query, $value, $field);
+
+        $user = auth()->user();
+
+        if ($user !== null && ! $user->isSuperAdmin() && $user->company_id !== null) {
+            $query->where('service_orders.company_id', $user->company_id);
+        }
+
+        return $query;
+    }
+}

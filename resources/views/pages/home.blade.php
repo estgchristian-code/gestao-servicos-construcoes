@@ -43,8 +43,9 @@ new class extends Component {
             <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
         </svg>
         <p class="text-sm text-indigo-900">
-            Os itens do menu <span class="font-semibold">Serviços, Orçamentos, Ordens de Serviço e Agenda</span>
-            estarão disponíveis em breve. O módulo de <span class="font-semibold">Clientes</span> já está ativo no menu.
+            Os itens do menu <span class="font-semibold">Agenda</span>
+            estarão disponíveis em breve. Os módulos de <span class="font-semibold">Clientes, Serviços, Orçamentos e Ordens de Serviço</span>
+            já estão ativos no menu.
         </p>
     </div>
 </div>
