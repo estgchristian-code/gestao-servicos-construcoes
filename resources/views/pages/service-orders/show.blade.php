@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ServiceOrder;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 new class extends Component {
@@ -11,6 +12,12 @@ new class extends Component {
         $this->order = $order;
 
         $this->authorize('view', $this->order);
+    }
+
+    #[On('order-status-updated')]
+    public function refreshOrderStatus(): void
+    {
+        $this->order->refresh();
     }
 
     public function delete()
@@ -98,6 +105,13 @@ new class extends Component {
                     </div>
 
                     <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Técnico responsável</p>
+                        <p class="mt-1 text-sm text-slate-700">
+                            {{ $this->order->technician?->name ?? 'Não atribuído' }}
+                        </p>
+                    </div>
+
+                    <div>
                         <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Valor total</p>
                         <p class="mt-1 text-sm font-medium text-slate-900">
                             R$ {{ number_format((float) $this->order->total, 2, ',', '.') }}
@@ -131,6 +145,8 @@ new class extends Component {
             </div>
 
             <livewire:manage-service-order-items :order="$this->order" :key="$this->order->id" />
+
+            <livewire:manage-service-order-execution :order="$this->order" :key="'execution-' . $this->order->id" />
         </div>
     </div>
 </div>

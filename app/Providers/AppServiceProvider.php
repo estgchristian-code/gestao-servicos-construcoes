@@ -9,6 +9,7 @@ use App\Models\ClientAddress;
 use App\Models\Company;
 use App\Models\Service;
 use App\Models\ServiceOrder;
+use App\Models\ServiceOrderExecutionEvent;
 use App\Models\ServiceOrderItem;
 use App\Models\User;
 use App\Policies\BudgetItemPolicy;
@@ -16,6 +17,7 @@ use App\Policies\BudgetPolicy;
 use App\Policies\ClientAddressPolicy;
 use App\Policies\ClientPolicy;
 use App\Policies\CompanyPolicy;
+use App\Policies\ServiceOrderExecutionEventPolicy;
 use App\Policies\ServiceOrderItemPolicy;
 use App\Policies\ServiceOrderPolicy;
 use App\Policies\ServicePolicy;
@@ -47,5 +49,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(BudgetItem::class, BudgetItemPolicy::class);
         Gate::policy(ServiceOrder::class, ServiceOrderPolicy::class);
         Gate::policy(ServiceOrderItem::class, ServiceOrderItemPolicy::class);
+        Gate::policy(ServiceOrderExecutionEvent::class, ServiceOrderExecutionEventPolicy::class);
     }
 }

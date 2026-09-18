@@ -63,6 +63,21 @@
                 @enderror
             </div>
 
+            <div>
+                <label for="technician_id" class="mb-1 block text-sm font-medium text-slate-700">Técnico responsável</label>
+                <select id="technician_id" wire:model="technician_id"
+                    class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30">
+                    <option value="">Sem técnico responsável</option>
+                    @foreach ($this->technicians as $technician)
+                        <option value="{{ $technician->id }}">{{ $technician->name }}</option>
+                    @endforeach
+                </select>
+                <p class="mt-1 text-xs text-slate-400">Opcional. Somente técnicos da sua empresa.</p>
+                @error('technician_id')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+
             <div class="sm:col-span-2">
                 <label for="scheduled_at" class="mb-1 block text-sm font-medium text-slate-700">Data agendada</label>
                 <input id="scheduled_at" type="date" wire:model="scheduled_at"

@@ -1,9 +1,11 @@
 <?php
 
 use App\Enums\ServiceOrderStatus;
+use App\Enums\UserRole;
 use App\Models\Budget;
 use App\Models\Client;
 use App\Models\ServiceOrder;
+use App\Models\User;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -12,6 +14,8 @@ new class extends Component {
     public string $client_id = '';
 
     public string $budget_id = '';
+
+    public string $technician_id = '';
 
     public string $number = '';
 
@@ -50,6 +54,17 @@ new class extends Component {
             ->get();
     }
 
+    #[Computed]
+    public function technicians()
+    {
+        return User::query()
+            ->where('users.company_id', auth()->user()->company_id)
+            ->where('users.active', true)
+            ->whereHas('roles', fn ($q) => $q->where('roles.slug', UserRole::Tecnico->value))
+            ->orderBy('users.name')
+            ->get();
+    }
+
     public function updatedClientId(): void
     {
         $this->budget_id = '';
@@ -74,6 +89,23 @@ new class extends Component {
             ],
             'title' => ['required', 'string', 'max:255'],
             'status' => [Rule::enum(ServiceOrderStatus::class)],
+            'technician_id' => [
+                'nullable',
+                function (string $attribute, $value, $fail) {
+                    if ($value === '') {
+                        return;
+                    }
+                    $valid = User::query()
+                        ->where('users.company_id', auth()->user()->company_id)
+                        ->where('users.active', true)
+                        ->where('users.id', $value)
+                        ->whereHas('roles', fn ($q) => $q->where('roles.slug', UserRole::Tecnico->value))
+                        ->exists();
+                    if (! $valid) {
+                        $fail('O técnico selecionado é inválido.');
+                    }
+                },
+            ],
             'scheduled_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
         ], [
@@ -86,6 +118,7 @@ new class extends Component {
         $order = new ServiceOrder([
             'client_id' => $this->client_id,
             'budget_id' => $this->budget_id !== '' ? $this->budget_id : null,
+            'technician_id' => $this->technician_id !== '' ? $this->technician_id : null,
             'number' => $this->generateNumber(),
             'title' => trim($this->title),
             'status' => $this->status,

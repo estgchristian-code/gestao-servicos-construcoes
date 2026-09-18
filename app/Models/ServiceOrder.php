@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['budget_id', 'client_id', 'number', 'title', 'status', 'scheduled_at', 'notes', 'total'])]
+#[Fillable(['budget_id', 'client_id', 'technician_id', 'number', 'title', 'status', 'scheduled_at', 'notes', 'total'])]
 class ServiceOrder extends Model
 {
     /** @use HasFactory<ServiceOrderFactory> */
@@ -72,22 +72,25 @@ class ServiceOrder extends Model
     }
 
     /**
-     * Scope the query to a single company/tenant.
+     * The technician (user with role "tecnico") assigned to this service order.
      *
-     * @param  Builder<ServiceOrder>  $query
-     * @param  int|User  $company  Company id or an authenticated-style user.
+     * @return BelongsTo<User, $this>
      */
-    public function scopeForCompany(Builder $query, int|User $company): Builder
+    public function technician(): BelongsTo
     {
-        $companyId = $company instanceof User ? $company->company_id : $company;
-
-        return $query->where('service_orders.company_id', $companyId);
+        return $this->belongsTo(User::class, 'technician_id');
     }
 
     /**
-     * Route model binding always resolves within the authenticated user's own
-     * company. Service orders from other tenants are treated as non-existent (404).
+     * The append-only execution history of this service order.
+     *
+     * @return HasMany<ServiceOrderExecutionEvent, $this>
      */
+    public function executionEvents(): HasMany
+    {
+        return $this->hasMany(ServiceOrderExecutionEvent::class)->orderBy('id');
+    }
+
     public function resolveRouteBindingQuery($query, $value, $field = null)
     {
         $query = parent::resolveRouteBindingQuery($query, $value, $field);
@@ -99,5 +102,18 @@ class ServiceOrder extends Model
         }
 
         return $query;
+    }
+
+    /**
+     * Scope the query to a single company/tenant.
+     *
+     * @param  Builder<ServiceOrder>  $query
+     * @param  int|User  $company  Company id or an authenticated-style user.
+     */
+    public function scopeForCompany(Builder $query, int|User $company): Builder
+    {
+        $companyId = $company instanceof User ? $company->company_id : $company;
+
+        return $query->where('service_orders.company_id', $companyId);
     }
 }
