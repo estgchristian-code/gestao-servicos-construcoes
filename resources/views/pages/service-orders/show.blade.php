@@ -98,6 +98,13 @@ new class extends Component {
                     </div>
 
                     <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Valor total</p>
+                        <p class="mt-1 text-sm font-medium text-slate-900">
+                            R$ {{ number_format((float) $this->order->total, 2, ',', '.') }}
+                        </p>
+                    </div>
+
+                    <div>
                         <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Data agendada</p>
                         <p class="mt-1 text-sm text-slate-700">
                             {{ $this->order->scheduled_at?->format('d/m/Y') ?? 'Não agendada' }}

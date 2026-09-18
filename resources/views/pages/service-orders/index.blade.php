@@ -112,6 +112,7 @@ new class extends Component {
                         <th scope="col" class="hidden px-6 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 md:table-cell">Título</th>
                         <th scope="col" class="hidden px-6 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 sm:table-cell">Status</th>
                         <th scope="col" class="hidden px-6 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 lg:table-cell">Agendada</th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Valor</th>
                         <th scope="col" class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Ações</th>
                     </tr>
                 </thead>
@@ -139,6 +140,9 @@ new class extends Component {
                                     {{ $order->scheduled_at?->format('d/m/Y') ?? '—' }}
                                 </p>
                             </td>
+                            <td class="px-6 py-4 text-right font-medium text-slate-900">
+                                R$ {{ number_format((float) $order->total, 2, ',', '.') }}
+                            </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center justify-end gap-2">
                                     <a href="{{ route('service-orders.show', $order) }}"
@@ -156,7 +160,7 @@ new class extends Component {
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-16 text-center">
+                            <td colspan="7" class="px-6 py-16 text-center">
                                 <p class="text-sm font-medium text-slate-700">Nenhuma ordem de serviço encontrada</p>
                                 <p class="mt-1 text-sm text-slate-500">Ajuste a busca ou comece criando uma ordem de serviço.</p>
                                 @if ($this->search !== '' || $this->status !== 'all')
