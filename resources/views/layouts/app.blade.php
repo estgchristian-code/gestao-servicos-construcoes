@@ -38,7 +38,7 @@
         ['label' => 'Serviços', 'route' => 'services.index', 'icon' => 'wrench'],
         ['label' => 'Orçamentos', 'route' => 'budgets.index', 'icon' => 'bill'],
         ['label' => 'Ordens de Serviço', 'route' => 'service-orders.index', 'icon' => 'clipboard'],
-        ['label' => 'Agenda', 'route' => null, 'icon' => 'calendar'],
+        ['label' => 'Agenda', 'route' => 'agenda', 'icon' => 'calendar'],
     ];
 @endphp
 

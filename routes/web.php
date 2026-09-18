@@ -22,6 +22,8 @@ Route::middleware('auth')->group(function () {
 
     Route::livewire('/home', 'pages::home')->name('home');
 
+    Route::livewire('/agenda', 'pages::agenda')->name('agenda');
+
     Route::livewire('/clientes', 'pages::clients.index')->name('clients.index');
     Route::livewire('/clientes/novo', 'pages::clients.create')->name('clients.create');
     Route::livewire('/clientes/{client}', 'pages::clients.show')->name('clients.show');
