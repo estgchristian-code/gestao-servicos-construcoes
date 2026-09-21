@@ -42,8 +42,10 @@ FROM base AS runtime
 COPY --from=dependencies --chown=www-data:www-data /app /app
 COPY --from=assets --chown=www-data:www-data /app/public/build /app/public/build
 COPY --chown=www-data:www-data Caddyfile /etc/frankenphp/Caddyfile
+COPY --chown=www-data:www-data vercel-entrypoint.sh /app/vercel-entrypoint.sh
 
-RUN setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/frankenphp \
+RUN chmod +x /app/vercel-entrypoint.sh \
+    && setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/frankenphp \
     && chown -R www-data:www-data /config/caddy /data/caddy
 
 ENV PORT=80 \
@@ -53,4 +55,4 @@ ENV PORT=80 \
 
 USER www-data
 
-CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]
+CMD ["/app/vercel-entrypoint.sh"]
