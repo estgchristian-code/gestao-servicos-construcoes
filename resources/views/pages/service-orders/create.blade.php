@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ServiceOrderHistoryType;
 use App\Enums\ServiceOrderStatus;
 use App\Enums\UserRole;
 use App\Models\Budget;
@@ -7,6 +8,7 @@ use App\Models\Client;
 use App\Models\ClientAddress;
 use App\Models\ServiceOrder;
 use App\Models\User;
+use App\Support\ServiceOrderHistoryRecorder;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -162,6 +164,12 @@ new class extends Component {
         ]);
         $order->company_id = auth()->user()->company_id;
         $order->save();
+
+        ServiceOrderHistoryRecorder::record(
+            $order,
+            ServiceOrderHistoryType::Created,
+            'Ordem de serviço criada.'
+        );
 
         session()->flash('status', 'Ordem de serviço cadastrada com sucesso.');
 

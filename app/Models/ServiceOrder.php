@@ -102,6 +102,18 @@ class ServiceOrder extends Model
     }
 
     /**
+     * The ordered timeline of actions performed on this service order.
+     *
+     * @return HasMany<ServiceOrderHistory, $this>
+     */
+    public function histories(): HasMany
+    {
+        return $this->hasMany(ServiceOrderHistory::class)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+    }
+
+    /**
      * The photos and files attached to this service order.
      *
      * @return HasMany<ServiceOrderAttachment, $this>

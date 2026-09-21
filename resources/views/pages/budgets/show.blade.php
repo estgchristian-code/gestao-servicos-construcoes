@@ -1,10 +1,12 @@
 <?php
 
 use App\Enums\BudgetStatus;
+use App\Enums\ServiceOrderHistoryType;
 use App\Enums\ServiceOrderStatus;
 use App\Models\Budget;
 use App\Models\ServiceOrder;
 use App\Models\ServiceOrderItem;
+use App\Support\ServiceOrderHistoryRecorder;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
@@ -90,6 +92,12 @@ new class extends Component {
         });
 
         $this->budget = $this->budget->fresh();
+
+        ServiceOrderHistoryRecorder::record(
+            $order,
+            ServiceOrderHistoryType::Created,
+            'Ordem de serviço criada a partir do orçamento #' . $this->budget->number . '.'
+        );
 
         session()->flash('status', 'Orçamento convertido em OS #' . $order->number . ' com sucesso.');
     }

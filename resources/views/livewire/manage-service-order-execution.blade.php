@@ -1,9 +1,11 @@
 <?php
 
 use App\Enums\ServiceOrderExecutionEventType;
+use App\Enums\ServiceOrderHistoryType;
 use App\Enums\ServiceOrderStatus;
 use App\Models\ServiceOrder;
 use App\Models\ServiceOrderExecutionEvent;
+use App\Support\ServiceOrderHistoryRecorder;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -120,12 +122,40 @@ new class extends Component {
 
         $this->order->update(['status' => $target]);
 
+        ServiceOrderHistoryRecorder::record(
+            $this->order,
+            $this->historyTypeFor($type),
+            $this->historyDescriptionFor($type, $target)
+        );
+
         $this->dispatch('order-status-updated');
 
         $this->event_notes = '';
         $this->resetValidation();
         unset($this->events);
         session()->flash('status', $type->label() . ' registrado com sucesso.');
+    }
+
+    protected function historyTypeFor(ServiceOrderExecutionEventType $type): ServiceOrderHistoryType
+    {
+        return match ($type) {
+            ServiceOrderExecutionEventType::Started => ServiceOrderHistoryType::ExecutionStarted,
+            ServiceOrderExecutionEventType::Completed => ServiceOrderHistoryType::ExecutionCompleted,
+            ServiceOrderExecutionEventType::Paused,
+            ServiceOrderExecutionEventType::Resumed,
+            ServiceOrderExecutionEventType::Cancelled => ServiceOrderHistoryType::StatusChanged,
+        };
+    }
+
+    protected function historyDescriptionFor(ServiceOrderExecutionEventType $type, ServiceOrderStatus $target): string
+    {
+        return match ($type) {
+            ServiceOrderExecutionEventType::Started => 'Execução iniciada.',
+            ServiceOrderExecutionEventType::Completed => 'Execução concluída.',
+            ServiceOrderExecutionEventType::Paused,
+            ServiceOrderExecutionEventType::Resumed,
+            ServiceOrderExecutionEventType::Cancelled => 'Status alterado para ' . $target->label() . '.',
+        };
     }
 };
 ?>

@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\ServiceOrderHistoryType;
 use App\Models\ServiceOrder;
 use App\Models\ServiceOrderAttachment;
+use App\Support\ServiceOrderHistoryRecorder;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -74,6 +76,12 @@ new class extends Component {
         $attachment->company_id = $this->order->company_id;
         $attachment->save();
 
+        ServiceOrderHistoryRecorder::record(
+            $this->order,
+            ServiceOrderHistoryType::AttachmentAdded,
+            'Anexo "' . $attachment->name . '" adicionado.'
+        );
+
         unset($this->attachments);
         $this->reset('file');
         $this->resetValidation();
@@ -89,6 +97,12 @@ new class extends Component {
 
         Storage::disk('local')->delete($attachment->path);
         $attachment->delete();
+
+        ServiceOrderHistoryRecorder::record(
+            $this->order,
+            ServiceOrderHistoryType::AttachmentRemoved,
+            'Anexo "' . $attachment->name . '" excluído.'
+        );
 
         unset($this->attachments);
         $this->dispatch('attachment-uploaded');

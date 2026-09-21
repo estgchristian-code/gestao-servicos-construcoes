@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ServiceOrderHistoryType;
 use App\Enums\ServiceOrderStatus;
 use App\Enums\UserRole;
 use App\Models\Budget;
@@ -7,6 +8,7 @@ use App\Models\Client;
 use App\Models\ClientAddress;
 use App\Models\ServiceOrder;
 use App\Models\User;
+use App\Support\ServiceOrderHistoryRecorder;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -163,6 +165,10 @@ new class extends Component {
             'title.required' => 'Informe o título da ordem de serviço.',
         ]);
 
+        $currentStatus = $this->order->status;
+        $currentTechnicianId = $this->order->technician_id !== null ? (int) $this->order->technician_id : null;
+        $currentScheduledAt = $this->order->scheduled_at?->format('Y-m-d');
+
         $this->order->update([
             'client_id' => $this->client_id,
             'client_address_id' => $this->client_address_id !== '' ? $this->client_address_id : null,
@@ -173,6 +179,42 @@ new class extends Component {
             'scheduled_at' => $this->scheduled_at !== '' ? $this->scheduled_at : null,
             'notes' => $this->notes !== '' ? $this->notes : null,
         ]);
+
+        if ((string) $this->status !== $currentStatus->value) {
+            ServiceOrderHistoryRecorder::record(
+                $this->order,
+                ServiceOrderHistoryType::StatusChanged,
+                'Status alterado de ' . $currentStatus->label() . ' para ' . ServiceOrderStatus::from($this->status)->label() . '.'
+            );
+        }
+
+        $newTechnicianId = $this->technician_id !== '' ? (int) $this->technician_id : null;
+
+        if ($newTechnicianId !== $currentTechnicianId) {
+            $technicianName = $newTechnicianId !== null
+                ? User::query()->whereKey($newTechnicianId)->value('name')
+                : null;
+
+            ServiceOrderHistoryRecorder::record(
+                $this->order,
+                ServiceOrderHistoryType::TechnicianChanged,
+                $technicianName !== null
+                    ? 'Técnico responsável alterado para ' . $technicianName . '.'
+                    : 'Técnico responsável removido.'
+            );
+        }
+
+        $newScheduledAt = $this->scheduled_at !== '' ? $this->scheduled_at : null;
+
+        if ($newScheduledAt !== $currentScheduledAt) {
+            ServiceOrderHistoryRecorder::record(
+                $this->order,
+                ServiceOrderHistoryType::ScheduledDateChanged,
+                $newScheduledAt !== null
+                    ? 'Data de agendamento alterada para ' . date('d/m/Y', strtotime($newScheduledAt)) . '.'
+                    : 'Data de agendamento removida.'
+            );
+        }
 
         session()->flash('status', 'Ordem de serviço atualizada com sucesso.');
 

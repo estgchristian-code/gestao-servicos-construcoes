@@ -167,6 +167,8 @@ new class extends Component {
             <livewire:manage-service-order-execution :order="$this->order" :key="'execution-' . $this->order->id" />
 
             <livewire:manage-service-order-attachments :order="$this->order" :key="'attachments-' . $this->order->id" />
+
+            <livewire:service-order-history :order="$this->order" :key="'history-' . $this->order->id" />
         </div>
     </div>
 </div>
