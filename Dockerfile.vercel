@@ -5,7 +5,9 @@ RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
 
 WORKDIR /app
 
-FROM base AS assets
+FROM node:24-alpine AS assets
+
+WORKDIR /app
 
 COPY package.json package-lock.json ./
 RUN npm ci
