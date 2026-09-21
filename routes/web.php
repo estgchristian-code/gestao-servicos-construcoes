@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\ServiceOrderAttachmentController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -43,4 +44,7 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/ordens-de-servico/novo', 'pages::service-orders.create')->name('service-orders.create');
     Route::livewire('/ordens-de-servico/{order}', 'pages::service-orders.show')->name('service-orders.show');
     Route::livewire('/ordens-de-servico/{order}/editar', 'pages::service-orders.edit')->name('service-orders.edit');
+
+    Route::get('/ordens-de-servico/anexos/{attachment}', [ServiceOrderAttachmentController::class, 'show'])
+        ->name('service-orders.attachments.show');
 });

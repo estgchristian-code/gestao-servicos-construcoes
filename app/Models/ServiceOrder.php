@@ -101,6 +101,16 @@ class ServiceOrder extends Model
         return $this->hasMany(ServiceOrderExecutionEvent::class)->orderBy('id');
     }
 
+    /**
+     * The photos and files attached to this service order.
+     *
+     * @return HasMany<ServiceOrderAttachment, $this>
+     */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(ServiceOrderAttachment::class)->orderByDesc('created_at');
+    }
+
     public function resolveRouteBindingQuery($query, $value, $field = null)
     {
         $query = parent::resolveRouteBindingQuery($query, $value, $field);
