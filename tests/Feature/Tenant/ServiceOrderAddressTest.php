@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Tenant;
 
+use App\Models\Budget;
 use App\Models\Client;
 use App\Models\ClientAddress;
 use App\Models\Company;
@@ -181,5 +182,88 @@ class ServiceOrderAddressTest extends TestCase
             ->get(route('service-orders.edit', $order))
             ->assertOk()
             ->assertSee('Sem endereço selecionado');
+    }
+
+    public function test_selecting_a_client_shows_its_address_in_the_options(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create();
+
+        ClientAddress::factory()->client($client)->create([
+            'street' => 'Rua das Flores',
+            'number' => '100',
+            'city' => 'Curitiba',
+            'state' => 'PR',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test('pages::service-orders.create')
+            ->assertDontSee('Rua das Flores')
+            ->set('client_id', (string) $client->id)
+            ->assertSee('Rua das Flores');
+    }
+
+    public function test_address_of_another_client_is_not_listed_in_the_options(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->admin()->company($company)->create();
+        $clientA = Client::factory()->company($company)->create();
+        $clientB = Client::factory()->company($company)->create();
+
+        ClientAddress::factory()->client($clientA)->create(['street' => 'Rua Alfa']);
+        ClientAddress::factory()->client($clientB)->create(['street' => 'Rua Beta']);
+
+        Livewire::actingAs($admin)
+            ->test('pages::service-orders.create')
+            ->set('client_id', (string) $clientA->id)
+            ->assertSee('Rua Alfa')
+            ->assertDontSee('Rua Beta');
+    }
+
+    public function test_selecting_a_client_filters_the_dependent_budgets(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->admin()->company($company)->create();
+        $clientA = Client::factory()->company($company)->create();
+        $clientB = Client::factory()->company($company)->create();
+
+        Budget::factory()->company($company)->client($clientA)->create(['title' => 'Budget Alpha']);
+        Budget::factory()->company($company)->client($clientB)->create(['title' => 'Budget Beta']);
+
+        Livewire::actingAs($admin)
+            ->test('pages::service-orders.create')
+            ->assertSee('Budget Beta')
+            ->set('client_id', (string) $clientA->id)
+            ->assertSee('Budget Alpha')
+            ->assertDontSee('Budget Beta');
+    }
+
+    public function test_edit_form_refreshes_addresses_when_the_client_changes(): void
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->admin()->company($company)->create();
+        $clientA = Client::factory()->company($company)->create();
+        $clientB = Client::factory()->company($company)->create();
+
+        ClientAddress::factory()->client($clientA)->create(['street' => 'Rua Alfa']);
+        ClientAddress::factory()->client($clientB)->create(['street' => 'Rua Beta']);
+
+        $order = ServiceOrder::factory()->company($company)->client($clientA)->create();
+
+        Livewire::actingAs($admin)
+            ->test('pages::service-orders.edit', ['order' => $order])
+            ->assertSee('Rua Alfa')
+            ->set('client_id', (string) $clientB->id)
+            ->assertSee('Rua Beta')
+            ->assertDontSee('Rua Alfa');
+    }
+
+    public function test_client_select_uses_live_binding_so_dependent_lists_refresh(): void
+    {
+        $partial = file_get_contents(resource_path('views/partials/service-order-form.blade.php'));
+
+        $this->assertStringContainsString('wire:model.live="client_id"', $partial);
+        $this->assertStringNotContainsString('wire:model="client_id"', $partial);
     }
 }
