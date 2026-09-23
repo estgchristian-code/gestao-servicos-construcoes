@@ -177,6 +177,10 @@ new class extends Component {
                                         class="rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50">
                                         Ver
                                     </a>
+                                    <a href="{{ route('clients.addresses', $client) }}"
+                                        class="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100">
+                                        Endereços
+                                    </a>
                                     <a href="{{ route('clients.edit', $client) }}"
                                         class="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100">
                                         Editar

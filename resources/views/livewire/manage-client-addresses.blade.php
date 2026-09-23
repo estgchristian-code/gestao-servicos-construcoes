@@ -9,6 +9,8 @@ use Livewire\Component;
 new class extends Component {
     public Client $client;
 
+    public bool $readOnly = false;
+
     public bool $showForm = false;
 
     public ?int $editingAddressId = null;
@@ -33,15 +35,16 @@ new class extends Component {
 
     public bool $main = false;
 
-    public function mount(Client $client): void
+    public function mount(Client $client, bool $readOnly = false): void
     {
         $this->client = $client;
+        $this->readOnly = $readOnly;
 
         if (! $client->relationLoaded('addresses')) {
             $client->load('addresses');
         }
 
-        $this->authorize('update', $this->client);
+        $this->authorize($this->readOnly ? 'view' : 'update', $this->client);
     }
 
     #[Computed]
@@ -52,6 +55,8 @@ new class extends Component {
 
     public function add(): void
     {
+        abort_if($this->readOnly, 403);
+
         $this->authorize('update', $this->client);
 
         if (! $this->editingAddressId) {
@@ -67,6 +72,8 @@ new class extends Component {
 
     public function edit(ClientAddress $address): void
     {
+        abort_if($this->readOnly, 403);
+
         $this->authorize('update', $address);
 
         $this->editingAddressId = $address->id;
@@ -85,6 +92,8 @@ new class extends Component {
 
     public function save(): void
     {
+        abort_if($this->readOnly, 403);
+
         $this->authorize('update', $this->client);
 
         $data = $this->validate([
@@ -136,6 +145,8 @@ new class extends Component {
 
     public function makeMain(ClientAddress $address): void
     {
+        abort_if($this->readOnly, 403);
+
         $this->authorize('update', $this->client);
 
         $address->update(['main' => true]);
@@ -145,6 +156,8 @@ new class extends Component {
 
     public function delete(ClientAddress $address): void
     {
+        abort_if($this->readOnly, 403);
+
         $this->authorize('delete', $address);
 
         $address->delete();
@@ -182,7 +195,7 @@ new class extends Component {
                 <p class="mt-0.5 text-xs text-slate-500">Apenas um endereço pode ser o principal.</p>
             </div>
 
-            @if (! $showForm)
+            @if (! $showForm && ! $this->readOnly)
                 <button type="button" wire:click="add"
                     class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
@@ -330,34 +343,38 @@ new class extends Component {
                                 </p>
                             </div>
                         </div>
-                        <div class="flex flex-none items-center gap-1">
-                            @if (! $address->main)
-                                <button type="button" wire:click="makeMain({{ $address->id }})" title="Definir como principal"
-                                    class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50">
-                                    Principal
+                        @if (! $this->readOnly)
+                            <div class="flex flex-none items-center gap-1">
+                                @if (! $address->main)
+                                    <button type="button" wire:click="makeMain({{ $address->id }})" title="Definir como principal"
+                                        class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50">
+                                        Principal
+                                    </button>
+                                @endif
+                                <button type="button" wire:click="edit({{ $address->id }})"
+                                    class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100">
+                                    Editar
                                 </button>
-                            @endif
-                            <button type="button" wire:click="edit({{ $address->id }})"
-                                class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100">
-                                Editar
-                            </button>
-                            <button type="button" wire:click="delete({{ $address->id }})" wire:confirm="Excluir este endereço?"
-                                class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50">
-                                Excluir
-                            </button>
-                        </div>
+                                <button type="button" wire:click="delete({{ $address->id }})" wire:confirm="Excluir este endereço?"
+                                    class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50">
+                                    Excluir
+                                </button>
+                            </div>
+                        @endif
                     </div>
                 @empty
                     <div class="px-6 py-12 text-center">
                         <p class="text-sm font-medium text-slate-700">Nenhum endereço cadastrado</p>
                         <p class="mt-1 text-sm text-slate-500">Adicione o primeiro endereço deste cliente.</p>
-                        <button type="button" wire:click="add"
-                            class="mt-4 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                            </svg>
-                            Adicionar endereço
-                        </button>
+                        @if (! $this->readOnly)
+                            <button type="button" wire:click="add"
+                                class="mt-4 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                Adicionar endereço
+                            </button>
+                        @endif
                     </div>
                 @endforelse
             </div>

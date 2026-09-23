@@ -29,6 +29,7 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/clientes/novo', 'pages::clients.create')->name('clients.create');
     Route::livewire('/clientes/{client}', 'pages::clients.show')->name('clients.show');
     Route::livewire('/clientes/{client}/editar', 'pages::clients.edit')->name('clients.edit');
+    Route::livewire('/clientes/{client}/enderecos', 'pages::clients.addresses')->name('clients.addresses');
 
     Route::livewire('/usuarios', 'pages::users.index')->name('users.index');
     Route::livewire('/usuarios/novo', 'pages::users.create')->name('users.create');

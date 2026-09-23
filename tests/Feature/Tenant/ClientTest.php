@@ -3,6 +3,7 @@
 namespace Tests\Feature\Tenant;
 
 use App\Models\Client;
+use App\Models\ClientAddress;
 use App\Models\Company;
 use App\Models\User;
 use App\Support\Documents;
@@ -63,6 +64,78 @@ class ClientTest extends TestCase
             ->assertOk()
             ->assertSee('Cliente Alpha')
             ->assertDontSee('Cliente Bravo');
+    }
+
+    public function test_index_links_directly_to_address_management(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create(['name' => 'Cliente com Endereços']);
+
+        $this->actingAs($user)
+            ->get(route('clients.index'))
+            ->assertOk()
+            ->assertSee('Cliente com Endereços')
+            ->assertSee(route('clients.addresses', $client));
+
+        $this->actingAs($user)
+            ->get(route('clients.show', $client))
+            ->assertOk()
+            ->assertSee('id="enderecos"', false);
+    }
+
+    public function test_show_page_renders_addresses_read_only(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create();
+        ClientAddress::factory()->client($client)->create();
+
+        $this->actingAs($user)
+            ->get(route('clients.show', $client))
+            ->assertOk()
+            ->assertSee('Endereços')
+            ->assertDontSee('wire:click="add"', false)
+            ->assertDontSee('wire:click="makeMain(', false)
+            ->assertDontSee('wire:click="edit(', false)
+            ->assertDontSee('wire:click="delete(', false);
+    }
+
+    public function test_addresses_page_renders_management_actions(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create();
+
+        $this->actingAs($user)
+            ->get(route('clients.addresses', $client))
+            ->assertOk()
+            ->assertSee('Endereços')
+            ->assertSee('wire:click="add"', false);
+    }
+
+    public function test_addresses_page_returns_404_for_cross_tenant_client(): void
+    {
+        $companyA = Company::factory()->create();
+        $companyB = Company::factory()->create();
+        $userA = User::factory()->admin()->company($companyA)->create();
+
+        $clientB = Client::factory()->company($companyB)->create();
+
+        $this->actingAs($userA)
+            ->get(route('clients.addresses', $clientB))
+            ->assertNotFound();
+    }
+
+    public function test_addresses_page_returns_403_for_tecnico(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->tecnico()->company($company)->create();
+        $client = Client::factory()->company($company)->create();
+
+        $this->actingAs($user)
+            ->get(route('clients.addresses', $client))
+            ->assertForbidden();
     }
 
     public function test_cross_tenant_client_returns_404_on_show(): void

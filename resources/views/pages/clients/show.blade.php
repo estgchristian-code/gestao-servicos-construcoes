@@ -148,8 +148,8 @@ new class extends Component {
             @endif
         </div>
 
-        <div class="lg:col-span-2">
-            <livewire:manage-client-addresses :client="$this->client" :key="$this->client->id" />
+        <div id="enderecos" class="lg:col-span-2">
+            <livewire:manage-client-addresses :client="$this->client" :read-only="true" :key="$this->client->id" />
         </div>
     </div>
 </div>

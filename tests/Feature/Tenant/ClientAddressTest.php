@@ -178,4 +178,21 @@ class ClientAddressTest extends TestCase
 
         $this->assertFalse($userA->can('update', $addressB));
     }
+
+    public function test_read_only_mode_blocks_mutations(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create();
+
+        Livewire::actingAs($user)
+            ->test('manage-client-addresses', ['client' => $client, 'readOnly' => true])
+            ->call('add')
+            ->assertForbidden();
+
+        Livewire::actingAs($user)
+            ->test('manage-client-addresses', ['client' => $client, 'readOnly' => true])
+            ->call('save')
+            ->assertForbidden();
+    }
 }
