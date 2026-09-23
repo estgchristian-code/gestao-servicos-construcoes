@@ -30,6 +30,10 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/clientes/{client}', 'pages::clients.show')->name('clients.show');
     Route::livewire('/clientes/{client}/editar', 'pages::clients.edit')->name('clients.edit');
 
+    Route::livewire('/usuarios', 'pages::users.index')->name('users.index');
+    Route::livewire('/usuarios/novo', 'pages::users.create')->name('users.create');
+    Route::livewire('/usuarios/{user}', 'pages::users.edit')->name('users.edit');
+
     Route::livewire('/servicos', 'pages::services.index')->name('services.index');
     Route::livewire('/servicos/novo', 'pages::services.create')->name('services.create');
     Route::livewire('/servicos/{service}', 'pages::services.show')->name('services.show');
