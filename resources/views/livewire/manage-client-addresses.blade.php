@@ -74,6 +74,10 @@ new class extends Component {
     {
         abort_if($this->readOnly, 403);
 
+        $address = $this->client->addresses()->whereKey($address->id)->first();
+
+        abort_if($address === null, 404, 'Endereço não encontrado.');
+
         $this->authorize('update', $address);
 
         $this->editingAddressId = $address->id;

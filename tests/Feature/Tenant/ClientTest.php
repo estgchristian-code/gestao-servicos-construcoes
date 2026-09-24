@@ -84,6 +84,18 @@ class ClientTest extends TestCase
             ->assertSee('id="enderecos"', false);
     }
 
+    public function test_show_page_has_no_client_edit_button(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create(['name' => 'Cliente para Edição']);
+
+        $this->actingAs($user)
+            ->get(route('clients.show', $client))
+            ->assertOk()
+            ->assertDontSee(route('clients.edit', $client));
+    }
+
     public function test_show_page_renders_addresses_read_only(): void
     {
         $company = Company::factory()->create();

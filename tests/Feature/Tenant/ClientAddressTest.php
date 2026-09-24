@@ -179,6 +179,96 @@ class ClientAddressTest extends TestCase
         $this->assertFalse($userA->can('update', $addressB));
     }
 
+    public function test_addresses_page_edit_targets_address_not_client_edit(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create();
+        ClientAddress::factory()->client($client)->create(['street' => 'Rua A']);
+
+        $this->actingAs($user)
+            ->get(route('clients.addresses', $client))
+            ->assertOk()
+            ->assertSee('Editar')
+            ->assertSee('wire:click="edit(', false)
+            ->assertDontSee(route('clients.edit', $client));
+    }
+
+    public function test_edit_opens_selected_address_form(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create();
+        $address = ClientAddress::factory()->client($client)->create(['street' => 'Rua Antiga']);
+
+        Livewire::actingAs($user)
+            ->test('manage-client-addresses', ['client' => $client])
+            ->call('edit', $address->id)
+            ->assertSet('editingAddressId', $address->id)
+            ->assertSet('street', 'Rua Antiga')
+            ->assertSet('showForm', true);
+    }
+
+    public function test_edit_updates_only_selected_address(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create();
+        $first = ClientAddress::factory()->client($client)->create(['street' => 'Rua Um', 'number' => '1']);
+        $second = ClientAddress::factory()->client($client)->create(['street' => 'Rua Dois', 'number' => '2']);
+
+        Livewire::actingAs($user)
+            ->test('manage-client-addresses', ['client' => $client])
+            ->call('edit', $second->id)
+            ->set('street', 'Rua Alterada')
+            ->set('number', '99')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('client_addresses', ['id' => $second->id, 'street' => 'Rua Alterada', 'number' => '99']);
+        $this->assertDatabaseHas('client_addresses', ['id' => $first->id, 'street' => 'Rua Um', 'number' => '1']);
+    }
+
+    public function test_edit_cannot_target_address_of_other_client_from_same_company(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $clientA = Client::factory()->company($company)->create();
+        $clientB = Client::factory()->company($company)->create();
+
+        $addressA = ClientAddress::factory()->client($clientA)->create(['street' => 'Rua A']);
+        $addressB = ClientAddress::factory()->client($clientB)->create(['street' => 'Rua B']);
+
+        Livewire::actingAs($user)
+            ->test('manage-client-addresses', ['client' => $clientA])
+            ->call('edit', $addressB->id)
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('client_addresses', ['id' => $addressA->id, 'street' => 'Rua A']);
+        $this->assertDatabaseHas('client_addresses', ['id' => $addressB->id, 'street' => 'Rua B']);
+    }
+
+    public function test_edit_cannot_target_address_of_another_company(): void
+    {
+        $companyA = Company::factory()->create();
+        $companyB = Company::factory()->create();
+        $userA = User::factory()->admin()->company($companyA)->create();
+
+        $clientA = Client::factory()->company($companyA)->create();
+        $addressA = ClientAddress::factory()->client($clientA)->create(['street' => 'Rua A']);
+
+        $clientB = Client::factory()->company($companyB)->create();
+        $addressB = ClientAddress::factory()->client($clientB)->create(['street' => 'Rua B']);
+
+        Livewire::actingAs($userA)
+            ->test('manage-client-addresses', ['client' => $clientA])
+            ->call('edit', $addressB->id)
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('client_addresses', ['id' => $addressA->id, 'street' => 'Rua A']);
+        $this->assertDatabaseHas('client_addresses', ['id' => $addressB->id, 'street' => 'Rua B']);
+    }
+
     public function test_make_main_cannot_target_address_of_other_client_from_same_company(): void
     {
         $company = Company::factory()->create();
