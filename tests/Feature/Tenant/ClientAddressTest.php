@@ -179,6 +179,48 @@ class ClientAddressTest extends TestCase
         $this->assertFalse($userA->can('update', $addressB));
     }
 
+    public function test_make_main_cannot_target_address_of_other_client_from_same_company(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $clientA = Client::factory()->company($company)->create();
+        $clientB = Client::factory()->company($company)->create();
+
+        $mainA = ClientAddress::factory()->client($clientA)->main()->create();
+        $mainB = ClientAddress::factory()->client($clientB)->main()->create();
+
+        Livewire::actingAs($user)
+            ->test('manage-client-addresses', ['client' => $clientA])
+            ->call('makeMain', $mainB->id)
+            ->assertNotFound();
+
+        $this->assertTrue($mainA->fresh()->main);
+        $this->assertTrue($mainB->fresh()->main);
+        $this->assertSame(1, $clientB->addresses()->where('main', true)->count());
+    }
+
+    public function test_make_main_cannot_target_address_of_another_company(): void
+    {
+        $companyA = Company::factory()->create();
+        $companyB = Company::factory()->create();
+        $userA = User::factory()->admin()->company($companyA)->create();
+
+        $clientA = Client::factory()->company($companyA)->create();
+        $mainA = ClientAddress::factory()->client($clientA)->main()->create();
+
+        $clientB = Client::factory()->company($companyB)->create();
+        $mainB = ClientAddress::factory()->client($clientB)->main()->create();
+
+        Livewire::actingAs($userA)
+            ->test('manage-client-addresses', ['client' => $clientA])
+            ->call('makeMain', $mainB->id)
+            ->assertNotFound();
+
+        $this->assertTrue($mainA->fresh()->main);
+        $this->assertTrue($mainB->fresh()->main);
+        $this->assertSame(1, $clientB->addresses()->where('main', true)->count());
+    }
+
     public function test_read_only_mode_blocks_mutations(): void
     {
         $company = Company::factory()->create();

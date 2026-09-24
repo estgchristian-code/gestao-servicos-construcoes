@@ -149,6 +149,12 @@ new class extends Component {
 
         $this->authorize('update', $this->client);
 
+        $address = $this->client->addresses()->whereKey($address->id)->first();
+
+        abort_if($address === null, 404, 'Endereço não encontrado.');
+
+        $this->authorize('update', $address);
+
         $address->update(['main' => true]);
         unset($this->addresses);
         session()->flash('status', 'Endereço principal atualizado.');
