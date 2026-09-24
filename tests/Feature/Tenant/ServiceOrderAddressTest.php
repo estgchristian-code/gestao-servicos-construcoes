@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Tenant;
 
+use App\Enums\BudgetStatus;
 use App\Models\Budget;
 use App\Models\Client;
 use App\Models\ClientAddress;
@@ -228,8 +229,14 @@ class ServiceOrderAddressTest extends TestCase
         $clientA = Client::factory()->company($company)->create();
         $clientB = Client::factory()->company($company)->create();
 
-        Budget::factory()->company($company)->client($clientA)->create(['title' => 'Budget Alpha']);
-        Budget::factory()->company($company)->client($clientB)->create(['title' => 'Budget Beta']);
+        Budget::factory()->company($company)->client($clientA)->create([
+            'title' => 'Budget Alpha',
+            'status' => BudgetStatus::Approved,
+        ]);
+        Budget::factory()->company($company)->client($clientB)->create([
+            'title' => 'Budget Beta',
+            'status' => BudgetStatus::Approved,
+        ]);
 
         Livewire::actingAs($admin)
             ->test('pages::service-orders.create')

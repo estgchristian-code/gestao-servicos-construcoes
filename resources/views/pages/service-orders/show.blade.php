@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\ServiceOrder;
+use App\Support\BudgetOrderLinker;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -24,7 +26,22 @@ new class extends Component {
     {
         $this->authorize('delete', $this->order);
 
-        $this->order->delete();
+        DB::transaction(function () {
+            $lockedOrder = ServiceOrder::query()
+                ->whereKey($this->order->id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($lockedOrder === null) {
+                return;
+            }
+
+            if ($lockedOrder->budget_id !== null) {
+                BudgetOrderLinker::releaseFromOrder($lockedOrder->budget_id, $lockedOrder->id);
+            }
+
+            $lockedOrder->delete();
+        });
 
         return redirect()
             ->route('service-orders.index')

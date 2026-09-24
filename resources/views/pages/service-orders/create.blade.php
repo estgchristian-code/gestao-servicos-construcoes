@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\BudgetStatus;
 use App\Enums\ServiceOrderHistoryType;
 use App\Enums\ServiceOrderStatus;
 use App\Enums\UserRole;
@@ -8,7 +9,9 @@ use App\Models\Client;
 use App\Models\ClientAddress;
 use App\Models\ServiceOrder;
 use App\Models\User;
+use App\Support\BudgetOrderLinker;
 use App\Support\ServiceOrderHistoryRecorder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -69,6 +72,8 @@ new class extends Component {
             ->when($this->client_id !== '', function ($query) {
                 $query->where('budgets.client_id', $this->client_id);
             })
+            ->where('budgets.status', BudgetStatus::Approved->value)
+            ->whereNull('budgets.service_order_id')
             ->orderByDesc('budgets.created_at')
             ->get();
     }
@@ -105,7 +110,9 @@ new class extends Component {
                 'nullable',
                 Rule::exists('budgets', 'id')
                     ->where('company_id', auth()->user()->company_id)
-                    ->when($this->client_id !== '', fn ($rule) => $rule->where('budgets.client_id', $this->client_id)),
+                    ->when($this->client_id !== '', fn ($rule) => $rule->where('budgets.client_id', $this->client_id))
+                    ->where('budgets.status', BudgetStatus::Approved->value)
+                    ->whereNull('budgets.service_order_id'),
             ],
             'client_address_id' => [
                 'nullable',
@@ -151,19 +158,37 @@ new class extends Component {
             'title.required' => 'Informe o título da ordem de serviço.',
         ]);
 
-        $order = new ServiceOrder([
-            'client_id' => $this->client_id,
-            'client_address_id' => $this->client_address_id !== '' ? $this->client_address_id : null,
-            'budget_id' => $this->budget_id !== '' ? $this->budget_id : null,
-            'technician_id' => $this->technician_id !== '' ? $this->technician_id : null,
-            'number' => $this->generateNumber(),
-            'title' => trim($this->title),
-            'status' => $this->status,
-            'scheduled_at' => $this->scheduled_at !== '' ? $this->scheduled_at : null,
-            'notes' => $this->notes !== '' ? $this->notes : null,
-        ]);
-        $order->company_id = auth()->user()->company_id;
-        $order->save();
+        $order = DB::transaction(function () {
+            $budget = $this->budget_id !== ''
+                ? BudgetOrderLinker::lockBudgetOrFail((int) $this->budget_id)
+                : null;
+
+            BudgetOrderLinker::assertLinkable(
+                $budget,
+                auth()->user()->company_id,
+                (int) $this->client_id
+            );
+
+            $order = new ServiceOrder([
+                'client_id' => $this->client_id,
+                'client_address_id' => $this->client_address_id !== '' ? $this->client_address_id : null,
+                'budget_id' => $budget?->id,
+                'technician_id' => $this->technician_id !== '' ? $this->technician_id : null,
+                'number' => $this->generateNumber(),
+                'title' => trim($this->title),
+                'status' => $this->status,
+                'scheduled_at' => $this->scheduled_at !== '' ? $this->scheduled_at : null,
+                'notes' => $this->notes !== '' ? $this->notes : null,
+            ]);
+            $order->company_id = auth()->user()->company_id;
+            $order->save();
+
+            if ($budget !== null) {
+                BudgetOrderLinker::attach($order, $budget);
+            }
+
+            return $order;
+        });
 
         ServiceOrderHistoryRecorder::record(
             $order,

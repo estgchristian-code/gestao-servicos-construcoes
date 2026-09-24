@@ -2,12 +2,14 @@
 
 namespace Tests\Feature\Tenant;
 
+use App\Enums\BudgetStatus;
 use App\Enums\ServiceOrderStatus;
 use App\Models\Budget;
 use App\Models\Client;
 use App\Models\Company;
 use App\Models\ServiceOrder;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -261,7 +263,9 @@ class ServiceOrderTest extends TestCase
         $company = Company::factory()->create();
         $user = User::factory()->admin()->company($company)->create();
         $client = Client::factory()->company($company)->create();
-        $budget = Budget::factory()->company($company)->client($client)->create();
+        $budget = Budget::factory()->company($company)->client($client)->create([
+            'status' => BudgetStatus::Approved,
+        ]);
 
         Livewire::actingAs($user)
             ->test('pages::service-orders.create')
@@ -276,6 +280,50 @@ class ServiceOrderTest extends TestCase
 
         $this->assertNotNull($order);
         $this->assertSame($budget->id, $order->budget_id);
+        $this->assertSame($order->id, $budget->fresh()->service_order_id);
+    }
+
+    public function test_cannot_link_non_approved_budget(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create();
+
+        foreach ([BudgetStatus::Draft, BudgetStatus::Sent, BudgetStatus::Refused, BudgetStatus::Expired, BudgetStatus::Cancelled] as $status) {
+            $budget = Budget::factory()->company($company)->client($client)->create(['status' => $status]);
+
+            Livewire::actingAs($user)
+                ->test('pages::service-orders.create')
+                ->set('client_id', (string) $client->id)
+                ->set('budget_id', (string) $budget->id)
+                ->set('title', 'OS com orçamento não aprovado')
+                ->call('save')
+                ->assertHasErrors('budget_id');
+
+            $this->assertSame(0, ServiceOrder::query()->count());
+        }
+    }
+
+    public function test_cannot_link_budget_already_linked_to_another_order(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create();
+        $otherOrder = ServiceOrder::factory()->company($company)->client($client)->create();
+        $budget = Budget::factory()->company($company)->client($client)->create([
+            'status' => BudgetStatus::Approved,
+            'service_order_id' => $otherOrder->id,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test('pages::service-orders.create')
+            ->set('client_id', (string) $client->id)
+            ->set('budget_id', (string) $budget->id)
+            ->set('title', 'OS com orçamento já vinculado')
+            ->call('save')
+            ->assertHasErrors('budget_id');
+
+        $this->assertSame(1, ServiceOrder::query()->count());
     }
 
     public function test_cannot_link_budget_from_another_company(): void
@@ -469,6 +517,118 @@ class ServiceOrderTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseHas('service_orders', ['id' => $order->id]);
+    }
+
+    public function test_editing_order_to_swap_budget_releases_previous_and_links_new(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create();
+        $budgetA = Budget::factory()->company($company)->client($client)->create([
+            'status' => BudgetStatus::Approved,
+        ]);
+        $budgetB = Budget::factory()->company($company)->client($client)->create([
+            'status' => BudgetStatus::Approved,
+        ]);
+        $order = ServiceOrder::factory()->company($company)->client($client)->create([
+            'budget_id' => $budgetA->id,
+        ]);
+        $budgetA->update(['service_order_id' => $order->id]);
+
+        Livewire::actingAs($user)
+            ->test('pages::service-orders.edit', ['order' => $order])
+            ->set('budget_id', (string) $budgetB->id)
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertRedirect();
+
+        $this->assertSame($budgetB->id, $order->fresh()->budget_id);
+        $this->assertNull($budgetA->fresh()->service_order_id);
+        $this->assertSame($order->id, $budgetB->fresh()->service_order_id);
+    }
+
+    public function test_editing_order_to_remove_budget_releases_it(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create();
+        $budget = Budget::factory()->company($company)->client($client)->create([
+            'status' => BudgetStatus::Approved,
+        ]);
+        $order = ServiceOrder::factory()->company($company)->client($client)->create([
+            'budget_id' => $budget->id,
+        ]);
+        $budget->update(['service_order_id' => $order->id]);
+
+        Livewire::actingAs($user)
+            ->test('pages::service-orders.edit', ['order' => $order])
+            ->set('budget_id', '')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertRedirect();
+
+        $this->assertNull($order->fresh()->budget_id);
+        $this->assertNull($budget->fresh()->service_order_id);
+    }
+
+    public function test_edit_cannot_link_budget_already_linked_to_another_order(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create();
+        $order = ServiceOrder::factory()->company($company)->client($client)->create(['budget_id' => null]);
+        $otherOrder = ServiceOrder::factory()->company($company)->client($client)->create(['budget_id' => null]);
+        $budget = Budget::factory()->company($company)->client($client)->create([
+            'status' => BudgetStatus::Approved,
+            'service_order_id' => $otherOrder->id,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test('pages::service-orders.edit', ['order' => $order])
+            ->set('budget_id', (string) $budget->id)
+            ->call('save')
+            ->assertHasErrors('budget_id');
+
+        $this->assertNull($order->fresh()->budget_id);
+        $this->assertSame($otherOrder->id, $budget->fresh()->service_order_id);
+    }
+
+    public function test_deleting_service_order_releases_linked_budget(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create();
+        $budget = Budget::factory()->company($company)->client($client)->create([
+            'status' => BudgetStatus::Approved,
+        ]);
+        $order = ServiceOrder::factory()->company($company)->client($client)->create([
+            'budget_id' => $budget->id,
+        ]);
+        $budget->update(['service_order_id' => $order->id]);
+
+        Livewire::actingAs($user)
+            ->test('pages::service-orders.show', ['order' => $order])
+            ->call('delete')
+            ->assertRedirect(route('service-orders.index'));
+
+        $this->assertDatabaseMissing('service_orders', ['id' => $order->id]);
+        $this->assertNull($budget->fresh()->service_order_id);
+    }
+
+    public function test_database_prevents_two_orders_duplicating_the_budget_link(): void
+    {
+        $company = Company::factory()->create();
+        $user = User::factory()->admin()->company($company)->create();
+        $client = Client::factory()->company($company)->create();
+        $budget = Budget::factory()->company($company)->client($client)->create([
+            'status' => BudgetStatus::Approved,
+        ]);
+
+        ServiceOrder::factory()->company($company)->client($client)->budget($budget)->create();
+
+        $this->expectException(QueryException::class);
+
+        ServiceOrder::factory()->company($company)->client($client)->budget($budget)->create();
     }
 
     public function test_all_statuses_are_persisted_and_labeled(): void

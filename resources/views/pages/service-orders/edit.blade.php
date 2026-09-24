@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\BudgetStatus;
 use App\Enums\ServiceOrderHistoryType;
 use App\Enums\ServiceOrderStatus;
 use App\Enums\UserRole;
@@ -8,7 +9,9 @@ use App\Models\Client;
 use App\Models\ClientAddress;
 use App\Models\ServiceOrder;
 use App\Models\User;
+use App\Support\BudgetOrderLinker;
 use App\Support\ServiceOrderHistoryRecorder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -83,6 +86,14 @@ new class extends Component {
             ->when($this->client_id !== '', function ($query) {
                 $query->where('budgets.client_id', $this->client_id);
             })
+            ->where(function ($query) {
+                $query->where('budgets.status', BudgetStatus::Approved->value)
+                    ->whereNull('budgets.service_order_id');
+
+                if ($this->order->budget_id !== null) {
+                    $query->orWhere('budgets.id', $this->order->budget_id);
+                }
+            })
             ->orderByDesc('budgets.created_at')
             ->get();
     }
@@ -119,7 +130,12 @@ new class extends Component {
                 'nullable',
                 Rule::exists('budgets', 'id')
                     ->where('company_id', auth()->user()->company_id)
-                    ->when($this->client_id !== '', fn ($rule) => $rule->where('budgets.client_id', $this->client_id)),
+                    ->when($this->client_id !== '', fn ($rule) => $rule->where('budgets.client_id', $this->client_id))
+                    ->where(function ($rule) {
+                        $rule->where('budgets.status', BudgetStatus::Approved->value)
+                            ->whereNull('budgets.service_order_id')
+                            ->when($this->order->budget_id !== null, fn ($rule) => $rule->orWhere('budgets.id', $this->order->budget_id));
+                    }),
             ],
             'client_address_id' => [
                 'nullable',
@@ -169,16 +185,49 @@ new class extends Component {
         $currentTechnicianId = $this->order->technician_id !== null ? (int) $this->order->technician_id : null;
         $currentScheduledAt = $this->order->scheduled_at?->format('Y-m-d');
 
-        $this->order->update([
-            'client_id' => $this->client_id,
-            'client_address_id' => $this->client_address_id !== '' ? $this->client_address_id : null,
-            'budget_id' => $this->budget_id !== '' ? $this->budget_id : null,
-            'technician_id' => $this->technician_id !== '' ? $this->technician_id : null,
-            'title' => trim($this->title),
-            'status' => $this->status,
-            'scheduled_at' => $this->scheduled_at !== '' ? $this->scheduled_at : null,
-            'notes' => $this->notes !== '' ? $this->notes : null,
-        ]);
+        $orderId = $this->order->id;
+
+        DB::transaction(function () use ($orderId) {
+            $lockedOrder = ServiceOrder::query()
+                ->whereKey($orderId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $budget = $this->budget_id !== ''
+                ? BudgetOrderLinker::lockBudgetOrFail((int) $this->budget_id)
+                : null;
+
+            BudgetOrderLinker::assertLinkable(
+                $budget,
+                auth()->user()->company_id,
+                (int) $this->client_id,
+                $orderId,
+                $lockedOrder->budget_id
+            );
+
+            $currentBudgetId = $lockedOrder->budget_id;
+
+            if ($currentBudgetId !== null && $currentBudgetId !== $budget?->id) {
+                BudgetOrderLinker::releaseFromOrder($currentBudgetId, $orderId);
+            }
+
+            $lockedOrder->update([
+                'client_id' => $this->client_id,
+                'client_address_id' => $this->client_address_id !== '' ? $this->client_address_id : null,
+                'budget_id' => $budget?->id,
+                'technician_id' => $this->technician_id !== '' ? $this->technician_id : null,
+                'title' => trim($this->title),
+                'status' => $this->status,
+                'scheduled_at' => $this->scheduled_at !== '' ? $this->scheduled_at : null,
+                'notes' => $this->notes !== '' ? $this->notes : null,
+            ]);
+
+            if ($budget !== null) {
+                BudgetOrderLinker::attach($lockedOrder, $budget);
+            }
+
+            $this->order = $lockedOrder;
+        });
 
         if ((string) $this->status !== $currentStatus->value) {
             ServiceOrderHistoryRecorder::record(
