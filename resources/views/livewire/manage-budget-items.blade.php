@@ -217,6 +217,11 @@ new class extends Component {
             <div>
                 <h2 class="text-sm font-semibold text-slate-900">Itens do orçamento</h2>
                 <p class="mt-0.5 text-xs text-slate-500">Os itens definem o valor total do orçamento.</p>
+                @if ($this->budget->service_order_id !== null)
+                    <p class="mt-0.5 text-xs font-medium text-slate-500">
+                        Convertido em OS #{{ $this->budget->serviceOrder?->number }} — somente leitura
+                    </p>
+                @endif
             </div>
 
             @can('update', $this->budget)
@@ -331,14 +336,14 @@ new class extends Component {
                         <p class="text-sm font-medium text-slate-700">Nenhum item cadastrado</p>
                         <p class="mt-1 text-sm text-slate-500">Adicione itens para definir o valor do orçamento.</p>
                         @can('update', $this->budget)
-                            <button type="button" wire:click="add"
-                                class="mt-4 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                                </svg>
-                                Adicionar item
-                            </button>
-                        @endcan
+                                <button type="button" wire:click="add"
+                                    class="mt-4 inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                    </svg>
+                                    Adicionar item
+                                </button>
+                            @endcan
                     </div>
                 @endforelse
             </div>

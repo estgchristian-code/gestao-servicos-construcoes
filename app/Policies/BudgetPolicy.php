@@ -32,19 +32,25 @@ class BudgetPolicy
     }
 
     /**
-     * Only an Admin/Comercial of the owning company may update a budget.
+     * Only an Admin/Comercial of the owning company may update a budget. A
+     * converted budget (one that already generated a service order) is frozen
+     * and cannot be changed.
      */
     public function update(User $user, Budget $budget): bool
     {
-        return $this->canManageCompany($user, $budget);
+        return $budget->service_order_id === null
+            && $this->canManageCompany($user, $budget);
     }
 
     /**
-     * Only an Admin/Comercial of the owning company may delete a budget.
+     * Only an Admin/Comercial of the owning company may delete a budget. A
+     * converted budget cannot be removed, otherwise the service order born
+     * from it would silently lose its reference.
      */
     public function delete(User $user, Budget $budget): bool
     {
-        return $this->canManageCompany($user, $budget);
+        return $budget->service_order_id === null
+            && $this->canManageCompany($user, $budget);
     }
 
     /**

@@ -41,6 +41,10 @@ class BudgetItemPolicy
 
     protected function canManage(User $user, BudgetItem $item): bool
     {
+        if ($item->budget?->service_order_id !== null) {
+            return false;
+        }
+
         return ($user->isAdmin() || $user->isComercial())
             && $user->belongsToCompany($item->budget?->company);
     }
