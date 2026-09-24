@@ -18,6 +18,14 @@ class Budget extends Model
     use HasFactory;
 
     /**
+     * Every budget is born as a Draft; a status different from Draft must
+     * never be passed on creation.
+     */
+    protected $attributes = [
+        'status' => BudgetStatus::Draft->value,
+    ];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -82,6 +90,35 @@ class Budget extends Model
         $companyId = $company instanceof User ? $company->company_id : $company;
 
         return $query->where('budgets.company_id', $companyId);
+    }
+
+    /**
+     * Whether the budget already generated a service order and is frozen.
+     */
+    public function isConverted(): bool
+    {
+        return $this->service_order_id !== null;
+    }
+
+    /**
+     * A budget without a validity date is always valid; otherwise it stays
+     * valid until the end of the given day.
+     */
+    public function isWithinValidity(): bool
+    {
+        return $this->valid_until === null
+            || $this->valid_until->copy()->startOfDay()->gte(now()->startOfDay());
+    }
+
+    /**
+     * A budget may only be converted when it is approved, has not been
+     * converted yet and its validity has not expired.
+     */
+    public function canBeConverted(): bool
+    {
+        return $this->status === BudgetStatus::Approved
+            && $this->service_order_id === null
+            && $this->isWithinValidity();
     }
 
     /**

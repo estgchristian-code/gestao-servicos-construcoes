@@ -43,13 +43,17 @@ new class extends Component {
             abort(403, 'Este orçamento já foi convertido em uma ordem de serviço.');
         }
 
+        if (! $this->budget->isWithinValidity()) {
+            abort(403, 'A validade deste orçamento expirou e ele não pode mais ser convertido em ordem de serviço.');
+        }
+
         $order = DB::transaction(function () {
             $budget = Budget::query()
                 ->whereKey($this->budget->id)
                 ->lockForUpdate()
                 ->first();
 
-            if ($budget->status !== BudgetStatus::Approved || $budget->service_order_id !== null) {
+            if ($budget === null || ! $budget->canBeConverted()) {
                 abort(403, 'Este orçamento não pode mais ser convertido em ordem de serviço.');
             }
 

@@ -49,7 +49,7 @@ new class extends Component {
                     ->where('active', true),
             ],
             'title' => ['required', 'string', 'max:255'],
-            'status' => [Rule::enum(BudgetStatus::class)],
+            'status' => ['nullable', Rule::enum(BudgetStatus::class)],
             'total' => ['required', 'regex:/^\d{1,10}([.,]\d{1,2})?$/', 'max:14'],
             'valid_until' => ['nullable', 'date', 'after_or_equal:today'],
             'notes' => ['nullable', 'string', 'max:5000'],
@@ -59,13 +59,14 @@ new class extends Component {
             'title.required' => 'Informe o título do orçamento.',
             'total.required' => 'Informe o valor total.',
             'total.regex' => 'Informe um valor válido (ex.: 1500 ou 1500,50).',
+            'status' => 'O status informado é inválido.',
         ]);
 
         $budget = new Budget([
             'client_id' => $this->client_id,
             'number' => $this->generateNumber(),
             'title' => trim($this->title),
-            'status' => $this->status,
+            'status' => BudgetStatus::Draft,
             'total' => $this->normalizeTotal($this->total),
             'valid_until' => $this->valid_until !== '' ? $this->valid_until : null,
             'notes' => $this->notes !== '' ? $this->notes : null,

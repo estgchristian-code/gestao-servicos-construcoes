@@ -37,15 +37,22 @@
 
             <div>
                 <label for="status" class="mb-1 block text-sm font-medium text-slate-700">Status</label>
-                <select id="status" wire:model="status"
-                    class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30">
-                    @foreach (App\Enums\BudgetStatus::cases() as $statusCase)
-                        <option value="{{ $statusCase->value }}">{{ $statusCase->label() }}</option>
-                    @endforeach
-                </select>
-                @error('status')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
+                @if (isset($this->budget) && count($this->statusOptions) > 1)
+                    <select id="status" wire:model="status"
+                        class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30">
+                        @foreach ($this->statusOptions as $statusOption)
+                            <option value="{{ $statusOption->value }}">{{ $statusOption->label() }}</option>
+                        @endforeach
+                    </select>
+                    @error('status')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                @else
+                    <input id="status" type="text"
+                        value="{{ isset($this->budget) ? $this->budget->status->label() : App\Enums\BudgetStatus::Draft->label() }}"
+                        disabled readonly
+                        class="block w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
+                @endif
             </div>
 
             <div>

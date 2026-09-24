@@ -12,6 +12,44 @@ enum BudgetStatus: string
     case Cancelled = 'cancelled';
 
     /**
+     * Statuses this status may transition to, mirroring the real flow of the
+     * system. A budget is created as Draft, is sent to the client (Sent) and
+     * may then be approved. Any other transition currently has no support in
+     * the codebase and is intentionally left blocked.
+     *
+     * @return list<self>
+     */
+    public function allowedTransitions(): array
+    {
+        return match ($this) {
+            self::Draft => [self::Sent],
+            self::Sent => [self::Approved],
+            self::Approved, self::Refused, self::Expired, self::Cancelled => [],
+        };
+    }
+
+    /**
+     * Options offered to the user, always including the current status so an
+     * edit that keeps the status unchanged remains valid.
+     *
+     * @return list<self>
+     */
+    public function transitionOptions(): array
+    {
+        return [$this, ...$this->allowedTransitions()];
+    }
+
+    /**
+     * Whether a move to the given status is allowed. A transition is valid
+     * when the target equals the current status (a no-op) or is explicitly
+     * listed in {@see allowedTransitions()}. Everything else is rejected.
+     */
+    public function canTransitionTo(self $target): bool
+    {
+        return $this === $target || in_array($target, $this->allowedTransitions(), true);
+    }
+
+    /**
      * Display label for the status.
      */
     public function label(): string

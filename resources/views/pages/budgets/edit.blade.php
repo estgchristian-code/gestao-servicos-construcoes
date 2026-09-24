@@ -3,6 +3,7 @@
 use App\Enums\BudgetStatus;
 use App\Models\Budget;
 use App\Models\Client;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -73,18 +74,39 @@ new class extends Component {
             'total.regex' => 'Informe um valor válido (ex.: 1500 ou 1500,50).',
         ]);
 
-        $this->budget->update([
-            'client_id' => $this->client_id,
-            'title' => trim($this->title),
-            'status' => $this->status,
-            'total' => $this->normalizeTotal($this->total),
-            'valid_until' => $this->valid_until !== '' ? $this->valid_until : null,
-            'notes' => $this->notes !== '' ? $this->notes : null,
-        ]);
+        $newStatus = BudgetStatus::tryFrom($this->status);
+
+        DB::transaction(function () use ($newStatus) {
+            $current = Budget::query()
+                ->whereKey($this->budget->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->authorize('update', $current);
+
+            if ($newStatus === null || ! $current->status->canTransitionTo($newStatus)) {
+                abort(403, 'Transição de status não permitida.');
+            }
+
+            $current->update([
+                'client_id' => $this->client_id,
+                'title' => trim($this->title),
+                'status' => $newStatus,
+                'total' => $this->normalizeTotal($this->total),
+                'valid_until' => $this->valid_until !== '' ? $this->valid_until : null,
+                'notes' => $this->notes !== '' ? $this->notes : null,
+            ]);
+        });
 
         session()->flash('status', 'Orçamento atualizado com sucesso.');
 
         return redirect()->route('budgets.show', $this->budget);
+    }
+
+    #[Computed]
+    public function statusOptions()
+    {
+        return $this->budget->status->transitionOptions();
     }
 
     private function normalizeTotal(string $value): string

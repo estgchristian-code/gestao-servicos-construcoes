@@ -65,6 +65,7 @@ class BudgetOrderLinker
             && (
                 $isCurrentBudget
                 || ($budget->status === BudgetStatus::Approved
+                    && $budget->isWithinValidity()
                     && ($budget->service_order_id === null || $budget->service_order_id === $orderId))
             );
 
